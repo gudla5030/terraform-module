@@ -1,0 +1,11 @@
+# Need to work on creating multiple vNets and respective multiple Subnets,  
+# vNets or Subnets should create based the value passed in module count
+    ex1: vnet01 we should create 4 subnets and address prefix automatically allocate
+    ex2: vnet02 we should create only 2 Subnets
+
+# Call One module resources to another Module 
+        ex: calling resource group details to virtual network module
+
+# How to Declar ${index.count} for automated values
+        ex:  vnet, subnets or vm's should contains with Index number
+
