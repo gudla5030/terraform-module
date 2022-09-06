@@ -1,0 +1,150 @@
+trigger:
+- main
+stages:
+ - stage: 'TerraformCIBuild'
+   displayName: 'TerraformCIBuild'
+   jobs:
+    - job: 'publish'
+      displayName: 'copy and publish tf files'
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - task: CopyFiles@2
+          inputs:
+            SourceFolder: 'API_Deploy'
+            Contents: '**'
+            TargetFolder: '$(build.artifactstagingdirectory)'
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: '$(build.artifactstagingdirectory)'
+            artifact: 'iac_tf_infra'
+            publishLocation: 'pipeline'
+        
+ - stage: 'devenv'
+   displayName: 'Dev-env'
+   jobs:
+    - deployment: 
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'Dev-env'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+             - task: TerraformInstaller@0
+               inputs:
+                 terraformVersion: 'latest'
+             - task: TerraformTaskV2@2
+               inputs:
+                 provider: 'azurerm'
+                 command: 'init'
+                 workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+                 backendServiceArm: 'Dev_Env'
+                 backendAzureRmResourceGroupName: 'Backup-RG01'
+                 backendAzureRmStorageAccountName: 'terraformdevstatefile'
+                 backendAzureRmContainerName: 'devstatefile'
+                 backendAzureRmKey: 'tf/yml_dev_terraform.tfstate'
+              
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'validate'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'plan'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+                environmentServiceNameAzureRM: 'Dev_Env'
+             - task: TerraformTaskV2@2
+               inputs:
+                  provider: 'azurerm'
+                  command: 'apply'
+                  workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+                  environmentServiceNameAzureRM: 'Dev_Env'
+             
+ - stage: 'UATenv'
+   displayName: 'UAT-env'
+   jobs:
+    - deployment: 
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'UAT-env'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+             - task: TerraformInstaller@0
+               inputs:
+                 terraformVersion: 'latest'
+             - task: TerraformTaskV2@2
+               inputs:
+                 provider: 'azurerm'
+                 command: 'init'
+                 workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/UAT'
+                 backendServiceArm: 'Prod_Env'
+                 backendAzureRmResourceGroupName: 'Test-RG01'
+                 backendAzureRmStorageAccountName: 'batch5tfstate'
+                 backendAzureRmContainerName: 'uatcontainer'
+                 backendAzureRmKey: 'tf/yml_prod_terraform.tfstate'
+              
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'validate'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/UAT'
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'plan'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/UAT'
+                environmentServiceNameAzureRM: 'Prod_Env'
+             - task: TerraformTaskV2@2
+               inputs:
+                  provider: 'azurerm'
+                  command: 'apply'
+                  workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+                  environmentServiceNameAzureRM: 'Prod_Env'
+
+ - stage: 'Prodenv'
+   displayName: 'Prod-env'
+   jobs:
+    - deployment: 
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'Prod-env'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+             - task: TerraformInstaller@0
+               inputs:
+                 terraformVersion: 'latest'
+             - task: TerraformTaskV2@2
+               inputs:
+                 provider: 'azurerm'
+                 command: 'init'
+                 workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Prod'
+                 backendServiceArm: 'Prod_Env'
+                 backendAzureRmResourceGroupName: 'Test-RG01'
+                 backendAzureRmStorageAccountName: 'batch5tfstate'
+                 backendAzureRmContainerName: 'prodcontainer'
+                 backendAzureRmKey: 'tf/yml_prod_terraform.tfstate'
+              
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'validate'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Prod'
+             - task: TerraformTaskV2@2
+               inputs:
+                provider: 'azurerm'
+                command: 'plan'
+                workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Prod'
+                environmentServiceNameAzureRM: 'Prod_Env'
+             - task: TerraformTaskV2@2
+               inputs:
+                  provider: 'azurerm'
+                  command: 'apply'
+                  workingDirectory: '$(Agent.BuildDirectory)/iac_tf_infra/Dev'
+                  environmentServiceNameAzureRM: 'Prod_Env'
